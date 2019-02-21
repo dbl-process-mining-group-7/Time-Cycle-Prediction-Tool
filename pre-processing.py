@@ -76,14 +76,27 @@ def train_naive_estimator(df):
 
 def predict_naive(average, df):
     df['estimator'] = average - df['inter-event-time']
+    df['estimator'] = df['estimator'].apply(to_seconds)
     return df
 
 
-def train_basic_tree(df):
+def convert_train(df):
     le = preprocessing.LabelEncoder()
     le.fit(df['event concept:name'])
     df['event concept:name'] = le.transform(df['event concept:name'])
     df['inter-event-time'] = df['inter-event-time'].apply(to_seconds)
+    df['time-to-end'] = df['time-to-end'].apply(to_seconds)
+    return df, le
+
+
+def convert_test(df, le):
+    df['inter-event-time'] = df['inter-event-time'].apply(to_seconds)
+    df['event concept:name'] = le.transform(df['event concept:name'])
+    df['time-to-end'] = df['time-to-end'].apply(to_seconds)
+    return df
+
+
+def train_basic_tree(df):
     X = df[['inter-event-time', 'event concept:name']]
     Y = df['time-to-end']
     clf = tree.DecisionTreeRegressor(max_depth=5)
@@ -92,16 +105,13 @@ def train_basic_tree(df):
 
 
 def predict_basic_tree(df, clf, le):
-    df['inter-event-time'] = df['inter-event-time'].apply(to_seconds)
-    df['event concept:name'] = le.transform(df['event concept:name'])
     df['estimator 2'] = clf.predict(df[['inter-event-time', 'event concept:name']])
     return df
 
 
 def calculate_error(df):
-    return math.sqrt(
-        sum((df['time-to-end'] - df['estimator']).apply(to_seconds).apply(lambda x: x ** 2)) / len(df)) / 3600 / 24
-
+    df['error'] = df['time-to-end'] - df['estimator']
+    return df
 
 def calculate_error2(df):
     return math.sqrt(
@@ -122,13 +132,10 @@ print('got extra columns')
 
 mean = train_naive_estimator(df_train)
 df_test = predict_naive(mean, df_test)
-error = calculate_error(df_test)
-print(error)
+df_train, le = convert_train(df_train)
+df_test = convert_test(df_test, le)
+df_test = calculate_error(df_test)
 
-tree_model, le = train_basic_tree(df_train)
-df_test = predict_basic_tree(df_test, tree_model, le)
-error2 = calculate_error2(df_test)
-print(error2)
 
-df_test.to_csv(name + 'predicted.csv')
-df_train.to_csv(name + 'extra-columns.csv')
+df_test.to_pickle(name + 'predicted.dat')
+df_train.to_pickle(name + 'extra-columns.dat')
