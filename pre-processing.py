@@ -113,6 +113,7 @@ def calculate_error(df):
     df['error'] = df['time-to-end'] - df['estimator']
     return df
 
+
 def calculate_error2(df):
     return math.sqrt(
         sum((df['time-to-end'].apply(to_seconds) - df['estimator 2']).apply(lambda x: x ** 2)) / len(df)) / 3600 / 24
@@ -135,7 +136,6 @@ df_test = predict_naive(mean, df_test)
 df_train, le = convert_train(df_train)
 df_test = convert_test(df_test, le)
 df_test = calculate_error(df_test)
-
 
 df_test.to_pickle(name + 'predicted.dat')
 df_train.to_pickle(name + 'extra-columns.dat')
